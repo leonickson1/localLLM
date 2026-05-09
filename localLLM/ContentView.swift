@@ -1,61 +1,89 @@
 //
 //  ContentView.swift
-//  localLLM
+//  LocalLLM
 //
 //  Created by Monish Soundar Raj on 12/16/25.
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @EnvironmentObject var appState: AppState
+    @State private var showTermsOfService = false
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        Group {
+            if appState.hasAcceptedTerms {
+                MainTabView()
+            } else {
+                TermsOfServiceView(showTerms: $showTermsOfService)
+                    .onAppear {
+                        showTermsOfService = true
                     }
-                }
-                .onDelete(perform: deleteItems)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        )
+    }
+}
+
+struct MainTabView: View {
+    @EnvironmentObject var modelManager: ModelManager
+    @State private var selectedTab = 0
+
+    private var defaultModel: AIModel {
+        modelManager.downloadedModels.first ?? AIModel.sampleModels[0]
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                ChatView(model: defaultModel)
             }
+            .tabItem {
+                Label("Chat", systemImage: "sparkles")
+            }
+            .tag(0)
+
+            NavigationStack {
+                HealthView(model: defaultModel)
+            }
+            .tabItem {
+                Label("Health", systemImage: "heart.fill")
+            }
+            .tag(1)
+
+            NavigationStack {
+                FinanceView(model: defaultModel)
+            }
+            .tabItem {
+                Label("Finance", systemImage: "creditcard.fill")
+            }
+            .tag(2)
+
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gearshape.fill")
+            }
+            .tag(3)
         }
+        .tint(.blue)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .environmentObject(AppState())
+        .environmentObject(ModelManager())
+        .environmentObject(ThemeManager())
+        .environmentObject(InferenceManager())
+        .environmentObject(ParameterStore())
+        .environmentObject(HealthManager())
+        .environmentObject(FinanceManager())
+        .environmentObject(HuggingFaceService())
 }

@@ -1,0 +1,32 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace
+xcuserdata/
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# OS files
+.DS_Store
+*.swp
+*~
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Models (large GGUF files)
+*.gguf
+
+# Credentials
+.env
+*.key
+*.pem
+*.p12

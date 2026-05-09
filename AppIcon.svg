@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2a2c"/>
+      <stop offset="100%" stop-color="#050505"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background (your gradient) -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- Border -->
+  <rect width="1020" height="1020" x="2" y="2" rx="222" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="3"/>
+
+  <!-- Sparkle/AI star - bigger, centered, no shield -->
+  <!-- Center vertical -->
+  <path d="M 512 260 L 512 764" stroke="white" stroke-width="48" stroke-linecap="round"/>
+  <!-- Center horizontal -->
+  <path d="M 260 512 L 764 512" stroke="white" stroke-width="48" stroke-linecap="round"/>
+  <!-- Diagonal TL-BR -->
+  <path d="M 334 334 L 690 690" stroke="white" stroke-width="36" stroke-linecap="round"/>
+  <!-- Diagonal TR-BL -->
+  <path d="M 690 334 L 334 690" stroke="white" stroke-width="36" stroke-linecap="round"/>
+
+  <!-- Dots at tips -->
+  <circle cx="512" cy="240" r="14" fill="white"/>
+  <circle cx="512" cy="784" r="14" fill="white"/>
+  <circle cx="240" cy="512" r="14" fill="white"/>
+  <circle cx="784" cy="512" r="14" fill="white"/>
+</svg>

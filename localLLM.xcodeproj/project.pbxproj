@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E44D29BD2FA4FF8B000053A0 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E44D29BC2FA4FF8B000053A0 /* LlamaSwift */; };
+		E44D29BF2FA500FB000053A0 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E44D29BE2FA500FB000053A0 /* LlamaSwift */; };
+		E4AF1D582F9E758F007BF297 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E4AF1D572F9E758F007BF297 /* LlamaSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E43EBE4F2EF23C7400FFE61A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,20 +35,23 @@
 		E43EBE582EF23C7400FFE61A /* localLLMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = localLLMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E4AF1D5A2F9E7617007BF297 /* Exceptions for "localLLM" folder in "localLLM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E43EBE3E2EF23C7200FFE61A /* localLLM */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E43EBE412EF23C7200FFE61A /* localLLM */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E4AF1D5A2F9E7617007BF297 /* Exceptions for "localLLM" folder in "localLLM" target */,
+			);
 			path = localLLM;
-			sourceTree = "<group>";
-		};
-		E43EBE512EF23C7400FFE61A /* localLLMTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = localLLMTests;
-			sourceTree = "<group>";
-		};
-		E43EBE5B2EF23C7400FFE61A /* localLLMUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = localLLMUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E4AF1D582F9E758F007BF297 /* LlamaSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E44D29BD2FA4FF8B000053A0 /* LlamaSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,6 +77,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E44D29BF2FA500FB000053A0 /* LlamaSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,8 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				E43EBE412EF23C7200FFE61A /* localLLM */,
-				E43EBE512EF23C7400FFE61A /* localLLMTests */,
-				E43EBE5B2EF23C7400FFE61A /* localLLMUITests */,
+				E4AF1D562F9E758F007BF297 /* Frameworks */,
 				E43EBE402EF23C7200FFE61A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +101,13 @@
 				E43EBE582EF23C7400FFE61A /* localLLMUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E4AF1D562F9E758F007BF297 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +130,7 @@
 			);
 			name = localLLM;
 			packageProductDependencies = (
+				E4AF1D572F9E758F007BF297 /* LlamaSwift */,
 			);
 			productName = localLLM;
 			productReference = E43EBE3F2EF23C7200FFE61A /* localLLM.app */;
@@ -130,11 +149,9 @@
 			dependencies = (
 				E43EBE502EF23C7400FFE61A /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				E43EBE512EF23C7400FFE61A /* localLLMTests */,
-			);
 			name = localLLMTests;
 			packageProductDependencies = (
+				E44D29BC2FA4FF8B000053A0 /* LlamaSwift */,
 			);
 			productName = localLLMTests;
 			productReference = E43EBE4E2EF23C7400FFE61A /* localLLMTests.xctest */;
@@ -153,11 +170,9 @@
 			dependencies = (
 				E43EBE5A2EF23C7400FFE61A /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				E43EBE5B2EF23C7400FFE61A /* localLLMUITests */,
-			);
 			name = localLLMUITests;
 			packageProductDependencies = (
+				E44D29BE2FA500FB000053A0 /* LlamaSwift */,
 			);
 			productName = localLLMUITests;
 			productReference = E43EBE582EF23C7400FFE61A /* localLLMUITests.xctest */;
@@ -195,6 +210,9 @@
 			);
 			mainGroup = E43EBE362EF23C7200FFE61A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E43EBE402EF23C7200FFE61A /* Products */;
 			projectDirPath = "";
@@ -395,30 +413,46 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=*]" = localLLM/localLLM.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = localLLM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Priv AI";
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "LocalLLM reads your health data to provide AI-powered health insights. All processing happens on your device.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LocalLLM reads your health data to provide AI-powered health insights. All processing happens on your device.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "LocalLLM connects to Ollama on your local network for AI inference with larger models.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "LocalLLM uses the microphone to record audio for on-device transcription.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LocalLLM needs access to your photos to analyze images with AI. All processing happens on your device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "LocalLLM uses on-device speech recognition to transcribe your audio recordings.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLM;
+				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.PrivAI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -427,30 +461,46 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=*]" = localLLM/localLLM.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = localLLM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Priv AI";
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "LocalLLM reads your health data to provide AI-powered health insights. All processing happens on your device.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LocalLLM reads your health data to provide AI-powered health insights. All processing happens on your device.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "LocalLLM connects to Ollama on your local network for AI inference with larger models.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "LocalLLM uses the microphone to record audio for on-device transcription.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LocalLLM needs access to your photos to analyze images with AI. All processing happens on your device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "LocalLLM uses on-device speech recognition to transcribe your audio recordings.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLM;
+				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.PrivAI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -462,16 +512,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLMTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/localLLM.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/localLLM";
 			};
 			name = Debug;
@@ -484,16 +538,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLMTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/localLLM.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/localLLM";
 			};
 			name = Release;
@@ -505,15 +563,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLMUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = localLLM;
 			};
 			name = Debug;
@@ -525,15 +588,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 838ASYRYR5;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.monishsoundarraj.localLLMUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = localLLM;
 			};
 			name = Release;
@@ -578,6 +646,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mattt/llama.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8940.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E44D29BC2FA4FF8B000053A0 /* LlamaSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */;
+			productName = LlamaSwift;
+		};
+		E44D29BE2FA500FB000053A0 /* LlamaSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */;
+			productName = LlamaSwift;
+		};
+		E4AF1D572F9E758F007BF297 /* LlamaSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */;
+			productName = LlamaSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E43EBE372EF23C7200FFE61A /* Project object */;
 }

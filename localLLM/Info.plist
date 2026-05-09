@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Priv AI reads your health data to provide AI-powered health insights. All processing happens on your device.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Priv AI does not write health data. This permission is required by the HealthKit framework.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Priv AI uses the microphone to record audio for on-device transcription.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Priv AI uses on-device speech recognition to transcribe your audio recordings.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Priv AI needs access to your photos to analyze images with AI. All processing happens on your device.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Priv AI connects to Ollama on your local network for AI inference with larger models.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.monishsoundarraj.PrivAI.model-download</string>
+	</array>
+</dict>
+</plist>
