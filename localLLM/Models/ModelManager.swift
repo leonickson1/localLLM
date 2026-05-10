@@ -14,12 +14,36 @@ class ModelManager: NSObject, ObservableObject {
     @Published var tasks: [AITask] = AITask.sampleTasks
     @Published var downloadError: String?
 
+    /// User's preferred default model id, persisted to UserDefaults.
+    /// Set whenever the user actively picks a model. Falls back to first downloaded if missing or deleted.
+    @Published var preferredModelId: String? {
+        didSet {
+            if let id = preferredModelId {
+                UserDefaults.standard.set(id, forKey: Self.preferredModelKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.preferredModelKey)
+            }
+        }
+    }
+
+    private static let preferredModelKey = "preferred_model_id"
+
+    /// The model the app should default to: user's preferred (if downloaded) else first downloaded else first sample.
+    var defaultModel: AIModel {
+        if let id = preferredModelId, let m = downloadedModels.first(where: { $0.id == id }) {
+            return m
+        }
+        return downloadedModels.first ?? AIModel.sampleModels[0]
+    }
+
     private var downloadTasks: [String: URLSessionDownloadTask] = [:]
     private var downloadSessions: [String: URLSession] = [:]
 
     private static let modelsDirectoryName = "Models"
 
     override init() {
+        // Restore the user's preferred model id (if set previously)
+        self.preferredModelId = UserDefaults.standard.string(forKey: Self.preferredModelKey)
         super.init()
         ensureModelsDirectory()
         loadModelAllowlist()
@@ -178,6 +202,12 @@ class ModelManager: NSObject, ObservableObject {
         }
 
         downloadedModels.removeAll { $0.id == model.id }
+
+        // If the deleted model was the user's preferred default, clear it so we fall back to the next available.
+        if preferredModelId == model.id {
+            preferredModelId = nil
+        }
+
         updateTaskModels()
     }
 

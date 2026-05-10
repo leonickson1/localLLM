@@ -59,17 +59,22 @@ open localLLM.xcodeproj
 ```
 
 3. Wait for SPM to resolve the [llama.swift](https://github.com/mattt/llama.swift) dependency (takes ~1 min first time)
-4. Select your iOS device as the run destination (not simulator for full features)
-5. Set your development team in **Signing & Capabilities** (Xcode will prompt you)
-6. Hit **Cmd+R** to build and run
-7. On first launch, download a model from the built-in catalog
+4. **Change the Bundle Identifier** in Signing & Capabilities — the existing `com.monishsoundarraj.PrivAI` is registered to the original developer's team and Apple will reject it. Use something unique like `com.yourname.PrivAI`
+5. **Set your Development Team** in Signing & Capabilities (Xcode will prompt you on first build)
+6. Select your iOS device as the run destination (simulator works for UI, but HealthKit and llama.cpp inference need a real device)
+7. Hit **Cmd+R** to build and run
+8. On first launch, accept the terms screen and download a model from the built-in catalog
+
+> **Apple Developer account note:** A free account is fine for running it on your own device. HealthKit capability works on free accounts for personal builds — you don't need the paid $99/yr program unless you want to distribute via TestFlight or the App Store.
 
 ### Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
+| `Failed to register bundle identifier` | Change `PRODUCT_BUNDLE_IDENTIFIER` to a unique value (e.g. `com.yourname.PrivAI`) in Signing & Capabilities |
+| `No account for team` / signing failed | In Signing & Capabilities, click the Team dropdown and pick yours. Add your Apple ID via Xcode → Settings → Accounts if it's not listed |
 | SPM package fails to resolve | Xcode menu: File > Packages > Reset Package Caches |
-| HealthKit entitlement error | Ensure `localLLM.entitlements` has HealthKit enabled and your provisioning profile supports it |
+| HealthKit entitlement error | Ensure `localLLM.entitlements` has HealthKit enabled and your provisioning profile supports it. On free accounts, HealthKit still works for personal builds |
 | "No such module LlamaSwift" | Clean build folder (Cmd+Shift+K), then rebuild |
 | Model download stuck | Check WiFi connection. Downloads are large (360MB - 4GB) |
 

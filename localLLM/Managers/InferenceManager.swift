@@ -61,12 +61,87 @@ class InferenceManager: ObservableObject {
         case generationTimeout             // generation took too long
     }
 
+    /// Total memory budget iOS gives this app on the current device.
+    /// Captured once at launch using os_proc_available_memory + current resident memory.
+    /// More accurate than guessing 50% of physicalMemory because it is the actual measured value for this iOS version + device.
+    let deviceMemoryBudgetMB: Int
+
     // MARK: - Init
 
     init() {
+        // Capture the device's effective memory budget for this app at launch.
+        let available = os_proc_available_memory()
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        let usedBytes: UInt64 = result == KERN_SUCCESS ? info.resident_size : 0
+        let totalBytes = UInt64(available) + usedBytes
+        self.deviceMemoryBudgetMB = Int(totalBytes / (1024 * 1024))
+
         setupLifecycleObservers()
         setupBatteryMonitoring()
         setupThermalMonitoring()
+    }
+
+    // MARK: - Compatibility
+
+    enum Compatibility {
+        case green   // fits comfortably
+        case yellow  // tight, may slow down
+        case red     // will not fit, do not download
+    }
+
+    struct CompatibilityReport {
+        let status: Compatibility
+        let label: String                // e.g. "Recommended"
+        let reason: String               // e.g. "Fits comfortably on your device"
+        let modelSizeMB: Int
+        let inferenceOverheadMB: Int
+        let requiredMB: Int
+        let deviceBudgetMB: Int
+        let percentOfBudget: Int          // 0...100+
+    }
+
+    /// Compute compatibility for a given model on this device.
+    /// Stable for the session because deviceMemoryBudgetMB is captured at launch.
+    func compatibility(for model: AIModel) -> CompatibilityReport {
+        let modelSizeMB = Int(model.modelSize / (1024 * 1024))
+        let overheadMB = max(800, modelSizeMB / 2)
+        let requiredMB = modelSizeMB + overheadMB
+        let percent = deviceMemoryBudgetMB > 0 ? (requiredMB * 100 / deviceMemoryBudgetMB) : 0
+
+        let status: Compatibility
+        let label: String
+        let reason: String
+
+        if requiredMB >= deviceMemoryBudgetMB * 85 / 100 {
+            status = .red
+            label = "Not recommended"
+            reason = "This model needs about \(requiredMB) MB but your device only allows this app about \(deviceMemoryBudgetMB) MB. It will likely crash on load."
+        } else if requiredMB >= deviceMemoryBudgetMB * 60 / 100 {
+            status = .yellow
+            label = "Might be tight"
+            reason = "This model needs about \(requiredMB) MB out of about \(deviceMemoryBudgetMB) MB available to this app. It should load but may slow down or unload under memory pressure."
+        } else {
+            status = .green
+            label = "Recommended"
+            reason = "This model needs about \(requiredMB) MB out of about \(deviceMemoryBudgetMB) MB available to this app. Fits comfortably."
+        }
+
+        return CompatibilityReport(
+            status: status,
+            label: label,
+            reason: reason,
+            modelSizeMB: modelSizeMB,
+            inferenceOverheadMB: overheadMB,
+            requiredMB: requiredMB,
+            deviceBudgetMB: deviceMemoryBudgetMB,
+            percentOfBudget: percent
+        )
     }
 
     // MARK: - Lifecycle Observers
@@ -233,6 +308,7 @@ class InferenceManager: ObservableObject {
 
     /// Whether the model needs a user confirmation before loading (high memory usage)
     @Published var pendingLoadConfirmation: ModelLoadConfirmation?
+    @Published var blockedLoad: ModelLoadConfirmation?
 
     struct ModelLoadConfirmation: Identifiable {
         let id = UUID()
@@ -263,23 +339,27 @@ class InferenceManager: ObservableObject {
             return
         }
 
-        // Check available memory before loading
+        // Check available memory before loading.
+        // Real overhead for inference is roughly 50% of model size (KV cache for 8K context + compute buffers + Metal allocations).
         let modelSizeMB = Int(model.modelSize / (1024 * 1024))
         let availableMB = availableMemoryInMB()
+        let inferenceOverheadMB = max(800, modelSizeMB / 2) // at least 800MB, scales with model size
+        let requiredMB = modelSizeMB + inferenceOverheadMB
 
         if availableMB > 0 {
-            let requiredMB = modelSizeMB + 300 // 300MB buffer for KV cache + overhead
-
-            if availableMB < requiredMB {
-                loadError = "Not enough memory. Need ~\(requiredMB)MB, have ~\(availableMB)MB. Close other apps and try again."
+            // Hard warning: model very likely won't fit. Offer "Try Anyway" but warn clearly.
+            if !forceLoad && availableMB < requiredMB {
+                blockedLoad = ModelLoadConfirmation(
+                    model: model, modelSizeMB: requiredMB, availableMB: availableMB
+                )
                 loadingModelId = nil
                 return
             }
 
-            // If model uses >60% of available memory, ask for confirmation
-            if !forceLoad && modelSizeMB > (availableMB * 60 / 100) {
+            // Soft warning: total need is more than 75% of available memory, ask for confirmation
+            if !forceLoad && requiredMB > (availableMB * 75 / 100) {
                 pendingLoadConfirmation = ModelLoadConfirmation(
-                    model: model, modelSizeMB: modelSizeMB, availableMB: availableMB
+                    model: model, modelSizeMB: requiredMB, availableMB: availableMB
                 )
                 loadingModelId = nil
                 return

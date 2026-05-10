@@ -48,6 +48,7 @@ struct ModelPickerView: View {
                     ForEach(downloadedModels) { model in
                         Button {
                             selectedModel = model
+                            modelManager.preferredModelId = model.id
                             Task { await inferenceManager.loadModel(model) }
                         } label: {
                             HStack {
@@ -85,6 +86,12 @@ struct ModelPickerView: View {
                 } else if downloadedModels.isEmpty {
                     Text("No Model")
                         .font(.system(size: 13, weight: .semibold))
+                } else if inferenceManager.loadingModelId != nil {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Loading...")
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
                 } else {
                     Text(inferenceManager.isModelLoaded ? selectedModel.displayName : "Select Model")
                         .font(.system(size: 13, weight: .semibold))

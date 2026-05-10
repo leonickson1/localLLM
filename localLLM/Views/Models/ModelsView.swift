@@ -174,6 +174,8 @@ struct ModelCardView: View {
                             .background(Color(uiColor: .tertiarySystemFill))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
 
+                        CompatibilityBadge(model: model)
+
                         if liveModel.isDownloaded {
                             Text("INSTALLED")
                                 .font(.system(size: 10, weight: .bold))
@@ -369,6 +371,106 @@ struct DownloadButton: View {
                 modelManager.availableModels.append(model)
             }
             modelManager.downloadModel(model)
+        }
+    }
+}
+
+// MARK: - Compatibility Badge
+
+struct CompatibilityBadge: View {
+    @EnvironmentObject var inferenceManager: InferenceManager
+    let model: AIModel
+    @State private var showInfo = false
+
+    private var report: InferenceManager.CompatibilityReport {
+        inferenceManager.compatibility(for: model)
+    }
+
+    private var dotColor: Color {
+        switch report.status {
+        case .green:  return .green
+        case .yellow: return .orange
+        case .red:    return .red
+        }
+    }
+
+    var body: some View {
+        Button {
+            showInfo = true
+        } label: {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 6, height: 6)
+                Text(report.label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Image(systemName: "info.circle")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(uiColor: .tertiarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showInfo, arrowEdge: .top) {
+            CompatibilityInfoPopover(report: report)
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
+struct CompatibilityInfoPopover: View {
+    let report: InferenceManager.CompatibilityReport
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("How this is calculated")
+                .font(.system(size: 15, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 8) {
+                CompatibilityInfoRow(label: "Model size", value: "\(report.modelSizeMB) MB")
+                CompatibilityInfoRow(label: "Inference overhead", value: "+\(report.inferenceOverheadMB) MB")
+                Divider()
+                CompatibilityInfoRow(label: "Total needed", value: "\(report.requiredMB) MB", bold: true)
+                CompatibilityInfoRow(label: "iOS gives this app", value: "\(report.deviceBudgetMB) MB")
+                CompatibilityInfoRow(label: "Usage", value: "\(report.percentOfBudget)% of budget", bold: true)
+            }
+            .font(.system(size: 13))
+
+            Divider()
+
+            Text(report.reason)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Inference overhead covers KV cache and compute buffers (roughly half the model size). iOS sets a per-app memory budget independent of how much total RAM your phone has, so closing other apps will not raise it.")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 300)
+    }
+}
+
+private struct CompatibilityInfoRow: View {
+    let label: String
+    let value: String
+    var bold: Bool = false
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .fontWeight(bold ? .semibold : .regular)
+                .foregroundStyle(.primary)
+                .monospacedDigit()
         }
     }
 }

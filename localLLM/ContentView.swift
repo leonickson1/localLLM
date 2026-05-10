@@ -22,20 +22,16 @@ struct ContentView: View {
                     }
             }
         }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
-        )
     }
 }
 
 struct MainTabView: View {
     @EnvironmentObject var modelManager: ModelManager
+    @EnvironmentObject var inferenceManager: InferenceManager
     @State private var selectedTab = 0
 
     private var defaultModel: AIModel {
-        modelManager.downloadedModels.first ?? AIModel.sampleModels[0]
+        modelManager.defaultModel
     }
 
     var body: some View {
@@ -73,6 +69,60 @@ struct MainTabView: View {
             .tag(3)
         }
         .tint(.blue)
+        .alert(
+            "Load Large Model?",
+            isPresented: Binding(
+                get: { inferenceManager.pendingLoadConfirmation != nil },
+                set: { _ in /* dismissal handled by buttons below */ }
+            ),
+            presenting: inferenceManager.pendingLoadConfirmation
+        ) { confirmation in
+            Button("Load Anyway") {
+                let model = confirmation.model
+                inferenceManager.pendingLoadConfirmation = nil
+                Task { await inferenceManager.loadModel(model, forceLoad: true) }
+            }
+            Button("Cancel", role: .cancel) {
+                inferenceManager.cancelPendingLoad()
+            }
+        } message: { confirmation in
+            Text("\(confirmation.model.displayName) needs about \(confirmation.modelSizeMB) MB to run, and iOS only allows this app about \(confirmation.availableMB) MB on your device. Loading anyway may cause the app to crash. A smaller model is more reliable on this device.")
+        }
+        .alert(
+            "Could Not Load Model",
+            isPresented: Binding(
+                get: { inferenceManager.loadError != nil },
+                set: { if !$0 { inferenceManager.loadError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                inferenceManager.loadError = nil
+            }
+        } message: {
+            Text(inferenceManager.loadError ?? "")
+        }
+        .alert(
+            "Model May Not Fit",
+            isPresented: Binding(
+                get: { inferenceManager.blockedLoad != nil },
+                set: { _ in /* dismissal handled by buttons below */ }
+            ),
+            presenting: inferenceManager.blockedLoad
+        ) { blocked in
+            Button("Try Anyway", role: .destructive) {
+                let model = blocked.model
+                inferenceManager.blockedLoad = nil
+                // Crash-loop protection: clear the saved preference so a crash
+                // does not auto-retry this model on next launch.
+                modelManager.preferredModelId = nil
+                Task { await inferenceManager.loadModel(model, forceLoad: true) }
+            }
+            Button("Cancel", role: .cancel) {
+                inferenceManager.blockedLoad = nil
+            }
+        } message: { blocked in
+            Text("\(blocked.model.displayName) needs about \(blocked.modelSizeMB) MB but iOS only gives this app about \(blocked.availableMB) MB on your device. Loading will likely crash the app. If you tap Try Anyway and the app crashes, on next launch we will fall back to a smaller model so you can pick a different one.")
+        }
     }
 }
 

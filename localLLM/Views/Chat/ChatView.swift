@@ -87,20 +87,6 @@ struct ChatView: View {
                 SafetyBannerView()
                     .animation(.easeInOut, value: inferenceManager.safetyWarning)
 
-                // Model loading
-                if inferenceManager.loadingModelId == model.id {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text("Loading \(model.displayName)...")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                if let error = modelLoadError {
-                    Text(error).font(.caption).foregroundStyle(.red)
-                        .padding(.horizontal).padding(.vertical, 4)
-                }
 
                 if messages.isEmpty && !isRecordingMode {
                     // Empty state
