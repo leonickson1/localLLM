@@ -143,8 +143,10 @@ Built on top of:
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp): inference engine
 - [llama.swift](https://github.com/mattt/llama.swift): Swift bindings
+- [Swiftlet](https://github.com/leonickson1/Swiftlet): streamed MoE engine for the experimental 35B
 - Hugging Face: GGUF model hosting (SmolLM2, Qwen2.5, Llama 3.2, Phi 3.5, Gemma, Mistral)
 - Apple frameworks: HealthKit, Vision, PDFKit, SwiftUI
+- [Claude Code](https://claude.com/claude-code): development collaborator for the Swiftlet engine and integration
 
 ## License
 
