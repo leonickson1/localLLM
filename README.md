@@ -1,7 +1,7 @@
 
 ![Swift](https://img.shields.io/badge/Swift-5.9+-orange?logo=swift&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-iOS%2017+-blue?logo=apple&logoColor=white)
-![License](https://img.shields.io/badge/License-GPL--3.0-green)
+![License](https://img.shields.io/badge/License-Apache--2.0-green)
 ![On-Device](https://img.shields.io/badge/100%25-On--Device-purple)
 
 # Priv AI (LocalLLM)
@@ -25,7 +25,7 @@ Private AI assistant that runs entirely on your device. No cloud, no accounts, n
 ## What it does
 
 - **Chat** with AI models downloaded to your device
-- **Experimental: a 35-billion-parameter model on your iPhone.** Qwen 3.6 35B streams its weights from storage instead of loading into memory, so it runs in about 2.5 GB of RAM. Find it in Settings under Experimental Models. This ships in the newest app version, which may still be in App Store review; if you do not see it yet, check back in a couple of days.
+- **Experimental: a 35-billion-parameter model on your iPhone.** [Qwen 3.6 35B](https://huggingface.co/Leonickson/Qwen3.6-35B-A3B-qpack) streams its weights from storage via the [Swiftlet](https://github.com/leonickson1/Swiftlet) engine instead of loading into memory, so it runs in about 2.5 GB of RAM. Find it in Settings under Experimental Models. This ships in the newest app version, which may still be in App Store review; if you do not see it yet, check back in a couple of days, or build the app from source below to try it today.
 - **Health insights** from Apple HealthKit data with AI coaching
 - **Finance tracking** from uploaded bank/credit card statements (PDF or image)
 - **Image analysis** via on-device OCR
@@ -150,4 +150,4 @@ Built on top of:
 
 ## License
 
-GPL-3.0 - see [LICENSE](LICENSE)
+Apache-2.0 - see [LICENSE](LICENSE)
