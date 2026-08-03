@@ -8,9 +8,19 @@ import Foundation
 enum ChatTemplate: String, Codable {
     case chatml      // <|im_start|>system\n...<|im_end|>
     case llama3      // <|begin_of_text|><|start_header_id|>...
-    case phi3        // <|system|>\n...<|end|>
+    case phi3       // <|system|>\n...<|end|>
     case qwen2       // Same as ChatML variant
     case gemma       // <start_of_turn>user\n...<end_of_turn>
+}
+
+/// Which inference engine serves the model.
+enum ModelFormat: String, Codable {
+    /// Single-file GGUF run by llama.cpp (LlamaSwift).
+    case gguf
+    /// Directory checkpoint run by the Swiftlet streaming engine (MoE models
+    /// far larger than RAM; experts stream from storage on demand, so RAM-fit
+    /// gating does not apply).
+    case swiftlet
 }
 
 struct AIModel: Identifiable, Codable, Hashable {
@@ -24,15 +34,19 @@ struct AIModel: Identifiable, Codable, Hashable {
     let huggingFaceUrl: String?
     let parameters: ModelParameters
     let chatTemplate: ChatTemplate
+    /// nil (default) = .gguf; optional so previously-persisted models decode.
+    var format: ModelFormat? = nil
     var contextWindow: Int = 2048 // tokens, updated after model load
 
     var isDownloaded: Bool = false
     var downloadProgress: Double = 0.0
     var isDownloading: Bool = false
 
+    var engineFormat: ModelFormat { format ?? .gguf }
+
     enum CodingKeys: String, CodingKey {
         case id, name, displayName, description, modelUrl, modelSize
-        case taskIds, huggingFaceUrl, parameters, chatTemplate
+        case taskIds, huggingFaceUrl, parameters, chatTemplate, format
     }
 
     struct ModelParameters: Codable, Hashable {
@@ -52,7 +66,13 @@ struct AIModel: Identifiable, Codable, Hashable {
     var localPath: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let modelsDir = docs.appendingPathComponent("Models")
-        return modelsDir.appendingPathComponent("\(id).gguf")
+        switch engineFormat {
+        case .gguf:
+            return modelsDir.appendingPathComponent("\(id).gguf")
+        case .swiftlet:
+            // Directory checkpoint (config.json + safetensors + tokenizer).
+            return modelsDir.appendingPathComponent(id, isDirectory: true)
+        }
     }
 
     static func == (lhs: AIModel, rhs: AIModel) -> Bool {
@@ -284,6 +304,25 @@ extension AIModel {
             huggingFaceUrl: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
             parameters: defaultParams,
             chatTemplate: .chatml
+        ),
+
+        // ── Streamed MoE (Swiftlet engine) ──────────────────────
+        // Runs models far larger than device RAM by streaming experts from
+        // storage. Checkpoint is a directory, transferred to
+        // Documents/Models/{id}/ (in-app resumable download coming).
+
+        AIModel(
+            id: "qwen3.6-35b-a3b-swiftlet",
+            name: "Qwen3.6-35B-A3B-4bit",
+            displayName: "Qwen 3.6 35B (Experimental)",
+            description: "Experimental. A frontier-class 35B that runs from storage. Chat only; first reply takes about 30 seconds. Details in Settings > Experimental Models.",
+            modelUrl: "https://huggingface.co/Leonickson/Qwen3.6-35B-A3B-qpack",
+            modelSize: 18_500_000_000,
+            taskIds: [BuiltInTaskID.llmChat.rawValue],
+            huggingFaceUrl: "https://huggingface.co/Leonickson/Qwen3.6-35B-A3B-qpack",
+            parameters: defaultParams,
+            chatTemplate: .qwen2,
+            format: .swiftlet
         ),
     ]
 }

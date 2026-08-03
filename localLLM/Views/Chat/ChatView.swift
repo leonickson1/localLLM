@@ -46,7 +46,9 @@ struct ChatView: View {
     @EnvironmentObject var healthManager: HealthManager
     @EnvironmentObject var financeManager: FinanceManager
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
     @EnvironmentObject var historyManager: ChatHistoryManager
+    @StateObject private var swiftletEngine = SwiftletEngine.shared
     @State private var currentSessionId: UUID = UUID()
     @State private var messages: [ChatMessage] = []
 
@@ -77,6 +79,7 @@ struct ChatView: View {
 
     // Navigation
     @State private var navigateToModels = false
+    @State private var navigateToExperimental = false
 
     var body: some View {
         ZStack {
@@ -100,7 +103,42 @@ struct ChatView: View {
                             .foregroundStyle(.primary)
                         }
 
-                        if modelManager.downloadedModels.isEmpty && !(ollamaService.isEnabled && ollamaService.isConnected) {
+                        // Experimental-model promo
+                        Button {
+                            navigateToExperimental = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(.purple)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Experimental: run a 35B model on your iPhone")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(modelManager.downloadedModels.contains(where: { $0.engineFormat == .swiftlet })
+                                         ? "Qwen 3.6 35B is ready. Pick it in the model menu. First reply takes about 30 seconds."
+                                         : "Runs from storage in ~2.5 GB of RAM. Tap to learn more and download.")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.purple.opacity(0.08))
+                                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.purple.opacity(0.25), lineWidth: 1))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 24)
+
+                        if modelManager.downloadedModels.isEmpty && !(ollamaService.isEnabled && ollamaService.isConnected) && !(openAICompat.isEnabled && openAICompat.isConnected) {
                             NoModelView(navigateToModels: $navigateToModels)
                         } else {
                             VStack(spacing: 8) {
@@ -153,6 +191,7 @@ struct ChatView: View {
                                     isGenerating: $isGenerating,
                                     selectedImage: $selectedImage,
                                     activeContext: $activeContext,
+                                    chatOnlyModel: model.engineFormat == .swiftlet,
                                     isFocused: $isInputFocused,
                                     onPhotoPick: { showPhotoPicker = true },
                                     onDocumentPick: { isImporting = true },
@@ -332,6 +371,7 @@ struct ChatView: View {
                                 isGenerating: $isGenerating,
                                 selectedImage: $selectedImage,
                                 activeContext: $activeContext,
+                                chatOnlyModel: model.engineFormat == .swiftlet,
                                 isFocused: $isInputFocused,
                                 onPhotoPick: { showPhotoPicker = true },
                                 onDocumentPick: { isImporting = true },
@@ -401,6 +441,11 @@ struct ChatView: View {
             ModelsView()
         }
         .task { await loadModelIfNeeded() }
+        .navigationDestination(isPresented: $navigateToExperimental) { ExperimentalModelsView() }
+        .onChange(of: model.id) { _, _ in
+            // The experimental model is chat-only: force the General context.
+            if model.engineFormat == .swiftlet { activeContext = .general }
+        }
         .onAppear {
             if let ctx = initialContext {
                 activeContext = ctx
@@ -426,11 +471,22 @@ struct ChatView: View {
     // MARK: - Model Loading
 
     private func loadModelIfNeeded() async {
+        // Streamed MoE models load through the Swiftlet engine; the llama.cpp
+        // RAM-fit gate doesn't apply (they run bigger-than-RAM by design).
+        if model.engineFormat == .swiftlet {
+            guard swiftletEngine.currentModelId != model.id || !swiftletEngine.isModelLoaded else { return }
+            if FileManager.default.fileExists(atPath: model.localPath.path) {
+                await swiftletEngine.loadModel(model)
+                if let error = swiftletEngine.loadError { modelLoadError = error }
+            }
+            return
+        }
+
         // If already loaded, skip
         guard inferenceManager.currentModelId != model.id else { return }
 
         // Try to find a downloaded model to load
-        if let downloaded = modelManager.downloadedModels.first {
+        if let downloaded = modelManager.downloadedModels.first(where: { $0.engineFormat == .gguf }) {
             // Use the first downloaded model if current selection isn't downloaded
             let modelToLoad = FileManager.default.fileExists(atPath: model.localPath.path) ? model : downloaded
             model = modelToLoad
@@ -555,7 +611,7 @@ struct ChatView: View {
             return "This is not medical advice. Health insights are generated by a local AI model for informational purposes only. Always consult a qualified healthcare provider for medical decisions."
         case .finance:
             return "This is not financial advice. Spending analysis is generated by a local AI model for personal tracking only. Consult a qualified financial advisor for financial decisions."
-        case .general:
+        case .journal, .general:
             return nil
         }
     }
@@ -621,12 +677,25 @@ struct ChatView: View {
         selectedItem = nil
         isGenerating = true
 
-        let useOllama = ollamaService.isEnabled && ollamaService.isConnected
-        if useOllama { inferenceManager.setOllamaContext() }
+        // Route to whichever backend the user has selected.
+        // Priority: explicit OpenAI-compat selection > explicit Ollama selection > on-device.
+        let useOpenAICompat = openAICompat.isEnabled && openAICompat.isConnected && !openAICompat.selectedModel.isEmpty
+        let useOllama = !useOpenAICompat && ollamaService.isEnabled && ollamaService.isConnected && !ollamaService.selectedModel.isEmpty
+        let useSwiftlet = !useOpenAICompat && !useOllama && model.engineFormat == .swiftlet
+        if useSwiftlet && activeContext != .general {
+            let notice = ChatMessage(
+                content: "Health, Finance, and Journal contexts aren't available with this experimental model. It supports general chat only. Switch the context back to General, or download a smaller model (like Qwen 2.5 1.5B) for those features.",
+                isUser: false, timestamp: Date()
+            )
+            withAnimation { messages.append(notice); isGenerating = false }
+            return
+        }
+        if useOpenAICompat || useOllama { inferenceManager.setOllamaContext() }
 
-        guard inferenceManager.isModelLoaded || useOllama else {
+        guard inferenceManager.isModelLoaded || useOllama || useOpenAICompat
+                || (useSwiftlet && swiftletEngine.isModelLoaded) else {
             let errorMsg = ChatMessage(
-                content: "No model available. Download a local model or connect to Ollama in Settings.",
+                content: "No model available. Download a local model, or connect to Ollama / an OpenAI-compatible server in Settings.",
                 isUser: false, timestamp: Date()
             )
             withAnimation { messages.append(errorMsg); isGenerating = false }
@@ -667,7 +736,7 @@ struct ChatView: View {
                 switch activeContext {
                 case .health: systemPrompt = .healthCoach(healthContext: healthManager.healthContextString())
                 case .finance: systemPrompt = .financeAdvisor(financeContext: financeManager.financeContextString())
-                case .general: systemPrompt = .chat
+                case .journal, .general: systemPrompt = .chat
                 }
             }
 
@@ -678,11 +747,40 @@ struct ChatView: View {
                 withAnimation { messages.append(assistantMessage) }
             }
 
-            if useOllama {
+            if useOpenAICompat {
+                let userText = conversationTurns.last?.content ?? ""
+                let stream = openAICompat.streamChat(
+                    systemPrompt: systemPrompt.text,
+                    userMessage: userText
+                )
+                for await token in stream {
+                    if let index = messages.firstIndex(where: { $0.id == messageId }) {
+                        messages[index].content += token
+                    }
+                }
+            } else if useOllama {
                 let userText = conversationTurns.last?.content ?? ""
                 let stream = ollamaService.streamChat(
                     systemPrompt: systemPrompt.text,
                     userMessage: userText
+                )
+                for await token in stream {
+                    if let index = messages.firstIndex(where: { $0.id == messageId }) {
+                        messages[index].content += token
+                    }
+                }
+            } else if useSwiftlet {
+                // Streamed MoE path: the model's own chat template is applied
+                // by the engine (tokenizer-native), not PromptFormatter, and
+                // the session disables the reasoning block itself. The prompt
+                // drops "Be concise" — on this quantized model it pulls EOS
+                // so hard that replies stop after a couple of tokens.
+                let swiftletSystem = "You are a helpful AI assistant running locally on the user's device. Answer clearly and completely. All processing happens on-device for privacy."
+                var chatTurns: [[String: String]] = [["role": "system", "content": swiftletSystem]]
+                chatTurns += conversationTurns.map { ["role": $0.role, "content": $0.content] }
+                let stream = swiftletEngine.streamChat(
+                    messages: chatTurns,
+                    maxTokens: parameterStore.asModelParameters.maxTokens
                 )
                 for await token in stream {
                     if let index = messages.firstIndex(where: { $0.id == messageId }) {
@@ -709,9 +807,12 @@ struct ChatView: View {
 
             // Stamp benchmark data onto the finished message
             if let index = messages.firstIndex(where: { $0.id == messageId }) {
-                messages[index].tokensPerSecond = inferenceManager.tokensPerSecond > 0 ? inferenceManager.tokensPerSecond : nil
-                messages[index].timeToFirstToken = inferenceManager.timeToFirstToken > 0 ? inferenceManager.timeToFirstToken : nil
-                messages[index].totalTokens = inferenceManager.totalTokens > 0 ? inferenceManager.totalTokens : nil
+                let tps = useSwiftlet ? swiftletEngine.tokensPerSecond : inferenceManager.tokensPerSecond
+                let ttft = useSwiftlet ? swiftletEngine.timeToFirstToken : inferenceManager.timeToFirstToken
+                let total = useSwiftlet ? swiftletEngine.totalTokens : inferenceManager.totalTokens
+                messages[index].tokensPerSecond = tps > 0 ? tps : nil
+                messages[index].timeToFirstToken = ttft > 0 ? ttft : nil
+                messages[index].totalTokens = total > 0 ? total : nil
             }
 
             isGenerating = false
@@ -727,6 +828,9 @@ struct UnifiedInputBar: View {
     @Binding var isGenerating: Bool
     @Binding var selectedImage: UIImage?
     @Binding var activeContext: ChatTag
+    /// Chat-only model (the experimental 35B): Health/Finance/Journal
+    /// contexts are disabled in the switcher.
+    var chatOnlyModel: Bool = false
     var isFocused: FocusState<Bool>.Binding
     let onPhotoPick: () -> Void
     let onDocumentPick: () -> Void
@@ -744,6 +848,7 @@ struct UnifiedInputBar: View {
         case .general: return "Ask anything..."
         case .health: return "Ask about your health..."
         case .finance: return "Ask about your spending..."
+        case .journal: return "Ask about your journal..."
         }
     }
 
@@ -796,6 +901,13 @@ struct UnifiedInputBar: View {
                                 Image(systemName: "checkmark")
                             }
                         }
+                        .disabled(chatOnlyModel && tag != .general)
+                    }
+                    if chatOnlyModel {
+                        Divider()
+                        // Menu rows truncate to one line; keep each short.
+                        Text("This experimental model is chat-only.")
+                        Text("Other features need a smaller model.")
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -845,7 +957,8 @@ struct UnifiedInputBar: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: .black.opacity(colorScheme == .light ? 0.1 : 0.2), radius: 20, x: 0, y: 8)
-        .disabled(isGenerating)
+        // Typing stays available while generating (send is gated separately),
+        // so the user can compose their next message during a slow reply.
 
             Text("AI can make mistakes. Double-check important info.")
                 .font(.system(size: 10))
@@ -1193,6 +1306,16 @@ struct MessageRow: View {
     @EnvironmentObject var parameterStore: ParameterStore
     @State private var copied = false
 
+    // Models reply in markdown (**bold**, `code`); render it instead of
+    // showing raw asterisks. Inline-only keeps line breaks and list text
+    // exactly as generated.
+    private var renderedContent: AttributedString {
+        (try? AttributedString(
+            markdown: message.content,
+            options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        )) ?? AttributedString(message.content)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if message.isUser {
@@ -1227,7 +1350,7 @@ struct MessageRow: View {
                         Text("Assistant").font(.caption.bold()).foregroundStyle(.primary)
                     }
 
-                    Text(message.content)
+                    Text(renderedContent)
                         .font(.system(size: 16)).foregroundStyle(.primary).lineSpacing(4)
 
                     // Benchmark stats + Copy button

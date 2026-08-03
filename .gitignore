@@ -30,3 +30,5 @@ Thumbs.db
 *.key
 *.pem
 *.p12
+reddit_*.txt
+TODO.md

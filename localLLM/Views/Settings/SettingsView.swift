@@ -11,14 +11,17 @@ struct SettingsView: View {
     @EnvironmentObject var modelManager: ModelManager
     @EnvironmentObject var parameterStore: ParameterStore
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
     @EnvironmentObject var inferenceManager: InferenceManager
     @EnvironmentObject var financeManager: FinanceManager
     @EnvironmentObject var healthManager: HealthManager
     @EnvironmentObject var historyManager: ChatHistoryManager
+    @EnvironmentObject var journalManager: JournalManager
     @State private var showAbout = false
     @State private var showLicenses = false
     @State private var showClearAlert = false
     @State private var showRecoveryAlert = false
+    @State private var showWipeJournalAlert = false
 
     var body: some View {
             List {
@@ -41,6 +44,29 @@ struct SettingsView: View {
                                 .foregroundStyle(.blue)
                         }
                     }
+
+                    NavigationLink {
+                        ExperimentalModelsView()
+                    } label: {
+                        Label {
+                            HStack {
+                                Text("Experimental Models")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("ALPHA")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.purple.opacity(0.2)))
+                                    .foregroundStyle(.purple)
+                                Spacer()
+                                Text("35B on-device")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "externaldrive.badge.icloud")
+                                .foregroundStyle(.purple)
+                        }
+                    }
                 } header: {
                     Text("MODELS")
                         .font(.system(size: 11, weight: .bold))
@@ -57,6 +83,23 @@ struct SettingsView: View {
                             Image(systemName: "server.rack")
                                 .foregroundStyle(.blue)
                         }
+                    }
+
+                    if !ollamaService.isEnabled {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Run larger models on your Mac and route requests over local WiFi. Turn this on after starting your Ollama server.")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("OLLAMA_HOST=0.0.0.0:11434 ollama serve")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(Color.primary.opacity(0.06))
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                        .padding(.vertical, 2)
+                        .listRowSeparator(.hidden)
                     }
 
                     if ollamaService.isEnabled {
@@ -147,18 +190,161 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("REMOTE MODEL")
+                    Text("OLLAMA")
                         .font(.system(size: 11, weight: .bold))
                         .tracking(1.2)
-                } footer: {
-                    if !ollamaService.isEnabled {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Connect to Ollama on your Mac for larger models.")
-                            Text("OLLAMA_HOST=0.0.0.0:11434 ollama serve")
-                                .font(.system(size: 10, design: .monospaced))
+                }
+
+                // OpenAI-Compatible Section
+                Section {
+                    Toggle(isOn: $openAICompat.isEnabled) {
+                        Label {
+                            Text("OpenAI-Compatible")
+                                .font(.system(size: 16, weight: .medium))
+                        } icon: {
+                            Image(systemName: "cloud")
+                                .foregroundStyle(.blue)
                         }
-                        .font(.caption2)
                     }
+
+                    if !openAICompat.isEnabled {
+                        Text("Connect to any server that speaks the OpenAI Chat Completions API: llama-server, vLLM, LM Studio, OpenAI, OpenRouter, Groq, and others. Turn this on to enter the URL and optional API key.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.vertical, 2)
+                            .listRowSeparator(.hidden)
+                    }
+
+                    if openAICompat.isEnabled {
+                        HStack {
+                            Label {
+                                Text("Server URL")
+                                    .font(.system(size: 16, weight: .medium))
+                            } icon: {
+                                Image(systemName: "network")
+                                    .foregroundStyle(.primary)
+                            }
+                            Spacer()
+                            TextField("http://192.168.1.x:8080", text: $openAICompat.baseURL)
+                                .font(.system(size: 13, design: .monospaced))
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(.secondary)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.URL)
+                        }
+
+                        HStack {
+                            Label {
+                                Text("API Key")
+                                    .font(.system(size: 16, weight: .medium))
+                            } icon: {
+                                Image(systemName: "key")
+                                    .foregroundStyle(.primary)
+                            }
+                            Spacer()
+                            SecureField("Optional", text: $openAICompat.apiKey)
+                                .font(.system(size: 13, design: .monospaced))
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(.secondary)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        }
+
+                        Button {
+                            Task { await openAICompat.checkConnection() }
+                        } label: {
+                            HStack {
+                                if openAICompat.isChecking {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .frame(width: 20)
+                                    Text("Testing...")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                } else if openAICompat.isConnected {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                    Text("Connected")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(.green)
+                                } else if openAICompat.error != nil {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.red)
+                                    Text("Failed - Tap to retry")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(.red)
+                                } else {
+                                    Image(systemName: "antenna.radiowaves.left.and.right")
+                                        .foregroundStyle(.blue)
+                                    Text("Test Connection")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(.blue)
+                                }
+                                Spacer()
+                            }
+                        }
+                        .disabled(openAICompat.isChecking)
+
+                        if openAICompat.isConnected && !openAICompat.availableModels.isEmpty {
+                            Picker(selection: $openAICompat.selectedModel) {
+                                ForEach(openAICompat.availableModels, id: \.self) { model in
+                                    Text(model).tag(model)
+                                }
+                            } label: {
+                                Label {
+                                    Text("Default Model")
+                                        .font(.system(size: 16, weight: .medium))
+                                } icon: {
+                                    Image(systemName: "cpu")
+                                        .foregroundStyle(.primary)
+                                }
+                            }
+                        } else if openAICompat.isConnected {
+                            HStack {
+                                Label {
+                                    Text("Model ID")
+                                        .font(.system(size: 16, weight: .medium))
+                                } icon: {
+                                    Image(systemName: "cpu")
+                                        .foregroundStyle(.primary)
+                                }
+                                Spacer()
+                                TextField("e.g. llama-3.1-8b-instruct", text: $openAICompat.selectedModel)
+                                    .font(.system(size: 13, design: .monospaced))
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundStyle(.secondary)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.never)
+                            }
+                        }
+
+                        if let err = openAICompat.error, !openAICompat.isChecking {
+                            Text(err)
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                        }
+
+                        Toggle(isOn: $openAICompat.allowSelfSignedCerts) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Trust self-signed certificates")
+                                        .font(.system(size: 14, weight: .medium))
+                                    Text("Advanced. Only enable for trusted local LAN servers.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "lock.shield")
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("OPENAI-COMPATIBLE")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.2)
                 }
 
                 // Appearance Section
@@ -243,6 +429,19 @@ struct SettingsView: View {
                     } label: {
                         Text("Clear All Downloaded Models")
                     }
+
+                    Button(role: .destructive) {
+                        showWipeJournalAlert = true
+                    } label: {
+                        HStack {
+                            Text("Delete All Journal Entries")
+                            Spacer()
+                            Text("\(journalManager.entries.count)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(journalManager.entries.isEmpty)
                 } header: {
                     Text("STORAGE")
                         .font(.system(size: 11, weight: .bold))
@@ -402,6 +601,14 @@ struct SettingsView: View {
             } message: {
                 Text("This will delete all downloaded models. You'll need to re-download them to use them.")
             }
+            .alert("Delete All Journal Entries?", isPresented: $showWipeJournalAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Everything", role: .destructive) {
+                    journalManager.wipeAll()
+                }
+            } message: {
+                Text("This will permanently delete every journal entry and attached image on this device. This cannot be undone.")
+            }
             .alert("Reset All App Data?", isPresented: $showRecoveryAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Reset Everything", role: .destructive) {
@@ -410,6 +617,7 @@ struct SettingsView: View {
                         financeManager.clearAllTransactions()
                         healthManager.disconnect()
                         historyManager.clearAll()
+                        journalManager.wipeAll()
                         parameterStore.resetToDefaults()
                     }
                 }

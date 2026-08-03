@@ -205,7 +205,10 @@ struct EmbeddedMessageRow: View {
                     .background(Circle().fill(Color.indigo.opacity(0.1)))
             }
             
-            Text(message.content)
+            Text((try? AttributedString(
+                markdown: message.content,
+                options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+            )) ?? AttributedString(message.content))
                 .font(.system(size: 14))
                 .foregroundStyle(message.isUser ? .white : .primary)
                 .padding(12)

@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftletCore
 import Combine
 import UIKit
 
@@ -93,7 +94,14 @@ class ModelManager: NSObject, ObservableObject {
         // Check which models are actually downloaded on disk
         for i in 0..<models.count {
             let localPath = models[i].localPath
-            let exists = FileManager.default.fileExists(atPath: localPath.path)
+            var exists = FileManager.default.fileExists(atPath: localPath.path)
+            // Container models: the folder appears the moment a download
+            // starts. Only count it downloaded when the manifest exists —
+            // the installer writes it last, after every byte is in place.
+            if exists, models[i].engineFormat == .swiftlet {
+                exists = FileManager.default.fileExists(
+                    atPath: localPath.appendingPathComponent("manifest.json").path)
+            }
             models[i].isDownloaded = exists
             models[i].downloadProgress = exists ? 1.0 : 0.0
             if exists {
@@ -123,6 +131,14 @@ class ModelManager: NSObject, ObservableObject {
     func downloadModel(_ model: AIModel) {
         guard let index = availableModels.firstIndex(where: { $0.id == model.id }) else { return }
         guard !availableModels[index].isDownloading else { return }
+
+        // Streamed (Swiftlet) models install via the streaming installer:
+        // bytes route from Hugging Face straight into the on-device container,
+        // resumable if interrupted (tap Download again to continue).
+        if model.engineFormat == .swiftlet {
+            downloadSwiftletModel(model, at: index)
+            return
+        }
 
         downloadError = nil
 
@@ -166,11 +182,121 @@ class ModelManager: NSObject, ObservableObject {
         downloadTask.resume()
     }
 
+    static func directorySize(_ url: URL) -> Int64 {
+        var total: Int64 = 0
+        if let e = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
+            for case let f as URL in e {
+                total += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            }
+        }
+        return total
+    }
+
+    /// Streaming install for directory-container models. Progress comes from
+    /// the installer's own byte accounting; re-invoking resumes.
+    private func downloadSwiftletModel(_ model: AIModel, at index: Int) {
+        // HF repos rate-limit anonymous downloads; any other host (e.g. an
+        // R2/CDN mirror) is fetched directly at full speed.
+        let source: StreamingInstaller.Source
+        if model.modelUrl.contains("huggingface.co/"),
+           let repo = model.modelUrl.components(separatedBy: "huggingface.co/").last, !repo.isEmpty {
+            source = .huggingFace(repo: repo)
+        } else if model.modelUrl.hasPrefix("http") {
+            source = .baseURL(model.modelUrl)
+        } else {
+            downloadError = "Invalid model source."
+            return
+        }
+        if let availableSpace = availableDiskSpace(), availableSpace < model.modelSize + 2_000_000_000 {
+            downloadError = "Not enough free space: this model needs about \(ByteCountFormatter.string(fromByteCount: model.modelSize, countStyle: .file)) plus headroom."
+            return
+        }
+        downloadError = nil
+        availableModels[index].isDownloading = true
+        availableModels[index].downloadProgress = 0
+
+        let cancelFlag = CancelFlag()
+        swiftletCancelFlags[model.id] = cancelFlag
+        let expectedBytes = Double(model.modelSize)
+        let dest = model.localPath
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let installer = StreamingInstaller(
+                source: source,
+                outputDir: dest
+            )
+            installer.shouldCancel = { cancelFlag.isSet }
+            // Smooth progress: resumed bytes already on disk + bytes this run.
+            let startingBytes = Double(Self.directorySize(dest))
+            installer.onBytes = { newBytes in
+                DispatchQueue.main.async {
+                    guard let self, let i = self.availableModels.firstIndex(where: { $0.id == model.id }) else { return }
+                    self.availableModels[i].downloadProgress = min(0.99, (startingBytes + Double(newBytes)) / expectedBytes)
+                }
+            }
+            installer.log = { print("[SwiftletInstall] \($0)") }
+            do {
+                try installer.install()
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.swiftletCancelFlags.removeValue(forKey: model.id)
+                    if let i = self.availableModels.firstIndex(where: { $0.id == model.id }) {
+                        self.availableModels[i].isDownloading = false
+                        self.availableModels[i].downloadProgress = 1.0
+                        self.availableModels[i].isDownloaded = true
+                    }
+                    self.downloadedModels.append(model)
+                    print("[ModelManager] streamed install complete: \(model.id)")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.swiftletCancelFlags.removeValue(forKey: model.id)
+                    if let i = self.availableModels.firstIndex(where: { $0.id == model.id }) {
+                        self.availableModels[i].isDownloading = false
+                    }
+                    if case StreamingInstaller.Error.cancelled = error {
+                        print("[ModelManager] streamed install cancelled: \(model.id)")
+                    } else {
+                        self.downloadError = "Download interrupted (\(error.localizedDescription)). Tap Download again to resume; progress is kept."
+                    }
+                }
+            }
+        }
+    }
+
+    /// Thread-safe cancellation flag polled by the streaming installer.
+    private final class CancelFlag {
+        private let lock = NSLock()
+        private var value = false
+        var isSet: Bool {
+            lock.lock(); defer { lock.unlock() }
+            return value
+        }
+        func set() {
+            lock.lock(); defer { lock.unlock() }
+            value = true
+        }
+    }
+    private var swiftletCancelFlags: [String: CancelFlag] = [:]
+
+    /// First downloaded model that can serve Health/Finance/Journal features.
+    /// The experimental streamed 35B is chat-only, so it never qualifies.
+    var firstAssistCapableModel: AIModel? {
+        downloadedModels.first { $0.engineFormat != .swiftlet }
+    }
+
+    /// True when models are installed but every one of them is chat-only —
+    /// the state where assist features should say "download another model".
+    var onlyChatOnlyModelsInstalled: Bool {
+        firstAssistCapableModel == nil && !downloadedModels.isEmpty
+    }
+
     func cancelDownload(_ model: AIModel) {
         downloadTasks[model.id]?.cancel()
         downloadTasks.removeValue(forKey: model.id)
         downloadSessions[model.id]?.invalidateAndCancel()
         downloadSessions.removeValue(forKey: model.id)
+        swiftletCancelFlags[model.id]?.set()
 
         if let index = availableModels.firstIndex(where: { $0.id == model.id }) {
             availableModels[index].isDownloading = false
@@ -183,6 +309,16 @@ class ModelManager: NSObject, ObservableObject {
     func deleteModel(_ model: AIModel) {
         let localPath = model.localPath
         print("[ModelManager] Deleting \(model.displayName) at \(localPath.path)")
+
+        // A loaded Swiftlet session mmaps files inside this directory —
+        // unload before removing so the engine can't serve a deleted model.
+        if model.engineFormat == .swiftlet {
+            Task { @MainActor in
+                if SwiftletEngine.shared.currentModelId == model.id {
+                    SwiftletEngine.shared.unload()
+                }
+            }
+        }
 
         do {
             if FileManager.default.fileExists(atPath: localPath.path) {

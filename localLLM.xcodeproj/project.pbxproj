@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5AF1E7C02FB1000100000003 /* SwiftletCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5AF1E7C02FB1000100000002 /* SwiftletCore */; };
 		E44D29BD2FA4FF8B000053A0 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E44D29BC2FA4FF8B000053A0 /* LlamaSwift */; };
 		E44D29BF2FA500FB000053A0 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E44D29BE2FA500FB000053A0 /* LlamaSwift */; };
 		E4AF1D582F9E758F007BF297 /* LlamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E4AF1D572F9E758F007BF297 /* LlamaSwift */; };
@@ -62,6 +63,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E4AF1D582F9E758F007BF297 /* LlamaSwift in Frameworks */,
+				5AF1E7C02FB1000100000003 /* SwiftletCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 			name = localLLM;
 			packageProductDependencies = (
 				E4AF1D572F9E758F007BF297 /* LlamaSwift */,
+				5AF1E7C02FB1000100000002 /* SwiftletCore */,
 			);
 			productName = localLLM;
 			productReference = E43EBE3F2EF23C7200FFE61A /* localLLM.app */;
@@ -212,6 +215,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */,
+				5AF1E7C02FB1000100000001 /* XCLocalSwiftPackageReference "../swiftlet" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E43EBE402EF23C7200FFE61A /* Products */;
@@ -647,6 +651,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		5AF1E7C02FB1000100000001 /* XCLocalSwiftPackageReference "../swiftlet" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../swiftlet;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -659,6 +670,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5AF1E7C02FB1000100000002 /* SwiftletCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SwiftletCore;
+		};
 		E44D29BC2FA4FF8B000053A0 /* LlamaSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E4AF1D552F9E6F32007BF297 /* XCRemoteSwiftPackageReference "llama" */;

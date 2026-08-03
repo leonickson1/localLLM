@@ -11,12 +11,14 @@ enum ChatTag: String, Codable, CaseIterable {
     case general = "General"
     case health = "Health"
     case finance = "Finance"
+    case journal = "Journal"
 
     var color: Color {
         switch self {
         case .general: return .gray
         case .health: return .pink
         case .finance: return .blue
+        case .journal: return .indigo
         }
     }
 
@@ -25,6 +27,7 @@ enum ChatTag: String, Codable, CaseIterable {
         case .general: return "message.fill"
         case .health: return "heart.fill"
         case .finance: return "creditcard.fill"
+        case .journal: return "book.fill"
         }
     }
 }

@@ -110,7 +110,25 @@ class InferenceManager: ObservableObject {
     /// Stable for the session because deviceMemoryBudgetMB is captured at launch.
     func compatibility(for model: AIModel) -> CompatibilityReport {
         let modelSizeMB = Int(model.modelSize / (1024 * 1024))
-        let overheadMB = max(800, modelSizeMB / 2)
+
+        // Streamed MoE models don't load into RAM: experts stream from
+        // storage on demand, so memory use is a small fixed budget no matter
+        // how large the model is on disk.
+        if model.engineFormat == .swiftlet {
+            let requiredMB = 3000
+            return CompatibilityReport(
+                status: .green,
+                label: "Experimental, runs from storage",
+                reason: "This model runs from storage: only its \(requiredMB) MB working set stays in memory, regardless of the \(modelSizeMB) MB on disk.",
+                modelSizeMB: modelSizeMB,
+                inferenceOverheadMB: 0,
+                requiredMB: requiredMB,
+                deviceBudgetMB: deviceMemoryBudgetMB,
+                percentOfBudget: deviceMemoryBudgetMB > 0 ? requiredMB * 100 / deviceMemoryBudgetMB : 0
+            )
+        }
+
+        let overheadMB = max(200, modelSizeMB / 2)
         let requiredMB = modelSizeMB + overheadMB
         let percent = deviceMemoryBudgetMB > 0 ? (requiredMB * 100 / deviceMemoryBudgetMB) : 0
 
@@ -324,6 +342,15 @@ class InferenceManager: ObservableObject {
         loadError = nil
         wasUnloadedForMemory = false
 
+        // Streamed models are chat-only for now: every non-chat feature
+        // (Health, Finance, Journal, task labs) loads through this manager,
+        // so one guard gives them all a clear, honest message.
+        if model.engineFormat == .swiftlet {
+            loadError = "\(model.displayName) is experimental and supports Chat only. For Health, Finance, and Journal, download a smaller model like Qwen 2.5 1.5B."
+            loadingModelId = nil
+            return
+        }
+
         let path = model.localPath.path
 
         guard FileManager.default.fileExists(atPath: path) else {
@@ -343,7 +370,7 @@ class InferenceManager: ObservableObject {
         // Real overhead for inference is roughly 50% of model size (KV cache for 8K context + compute buffers + Metal allocations).
         let modelSizeMB = Int(model.modelSize / (1024 * 1024))
         let availableMB = availableMemoryInMB()
-        let inferenceOverheadMB = max(800, modelSizeMB / 2) // at least 800MB, scales with model size
+        let inferenceOverheadMB = max(200, modelSizeMB / 2) // floor of 200MB for tiny models, scales up with model size
         let requiredMB = modelSizeMB + inferenceOverheadMB
 
         if availableMB > 0 {

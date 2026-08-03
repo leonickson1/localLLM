@@ -198,7 +198,12 @@ class FinanceManager: ObservableObject {
 
     // MARK: - LLM Categorization
 
-    func categorizeWithLLM(using inferenceManager: InferenceManager, parameters: AIModel.ModelParameters, ollamaService: OllamaService? = nil) async {
+    func categorizeWithLLM(
+        using inferenceManager: InferenceManager,
+        parameters: AIModel.ModelParameters,
+        ollamaService: OllamaService? = nil,
+        openAICompat: OpenAICompatibleService? = nil
+    ) async {
         guard !rawStatementText.isEmpty else {
             print("[FinanceManager] categorize called but rawStatementText is empty")
             return
@@ -206,13 +211,23 @@ class FinanceManager: ObservableObject {
 
         print("[FinanceManager] Starting LLM categorization with \(rawStatementText.count) chars")
 
-        // Prefer Ollama if connected (better parsing with larger models)
+        // Priority 1: OpenAI-compatible (preferred for big cloud or local llama-server models)
+        if let openAI = openAICompat, openAI.isEnabled && openAI.isConnected && !openAI.selectedModel.isEmpty {
+            print("[FinanceManager] Using OpenAI-compatible (\(openAI.selectedModel)) for extraction")
+            await categorizeWithRemote(label: "OpenAI-compat") { [weak openAI] sys, msg in
+                await openAI?.chat(systemPrompt: sys, userMessage: msg)
+            }
+            if !transactions.isEmpty { return }
+            print("[FinanceManager] OpenAI-compat returned no transactions, trying Ollama...")
+        }
+
+        // Priority 2: Ollama
         if let ollama = ollamaService, ollama.isEnabled && ollama.isConnected {
             print("[FinanceManager] Using Ollama (\(ollama.selectedModel)) for extraction")
-            await categorizeWithOllama(ollama)
-            // If Ollama got results, we're done
+            await categorizeWithRemote(label: "Ollama") { [weak ollama] sys, msg in
+                await ollama?.chat(systemPrompt: sys, userMessage: msg)
+            }
             if !transactions.isEmpty { return }
-            // Ollama failed - fall through to local model
             print("[FinanceManager] Ollama returned no transactions, trying local model...")
         }
 
@@ -301,7 +316,12 @@ class FinanceManager: ObservableObject {
 
     // MARK: - Ollama Categorization (better quality with remote model)
 
-    private func categorizeWithOllama(_ ollama: OllamaService) async {
+    /// Generic remote-backend categorization. Takes a chat closure so it works with both
+    /// Ollama and OpenAI-compatible backends without duplicating the page-loop logic.
+    private func categorizeWithRemote(
+        label: String,
+        chat: @escaping (String, String) async -> String?
+    ) async {
         isProcessing = true
         hasProcessedStatement = true
         processingError = nil
@@ -313,7 +333,7 @@ class FinanceManager: ObservableObject {
         totalPages = max(pages.count, 1)
         pagesProcessed = 0
 
-        print("[FinanceManager] Processing \(pages.count) sections via Ollama (\(ollama.selectedModel))")
+        print("[FinanceManager] Processing \(pages.count) sections via \(label)")
 
         for (i, page) in pages.enumerated() {
             pagesProcessed = i + 1
@@ -326,7 +346,7 @@ class FinanceManager: ObservableObject {
             // Skip sections without dollar amounts
             if page.range(of: #"\$?\d+\.\d{2}"#, options: .regularExpression) == nil { continue }
 
-            if let response = await ollama.chat(systemPrompt: systemPrompt, userMessage: page) {
+            if let response = await chat(systemPrompt, page) {
                 var parsed = parseTransactionLines(response)
                 if parsed.isEmpty { parsed = parseTransactionsFallback(response) }
                 if !parsed.isEmpty {
@@ -338,8 +358,8 @@ class FinanceManager: ObservableObject {
             }
         }
 
-        let newCount = transactions.count // all from this Ollama run
-        print("[FinanceManager] Total: \(newCount) transactions from all sections")
+        let newCount = transactions.count
+        print("[FinanceManager] Total: \(newCount) transactions from all sections via \(label)")
 
         if newCount == 0 {
             processingError = "No transactions found. Try a different model or add manually."

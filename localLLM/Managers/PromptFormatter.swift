@@ -22,6 +22,7 @@ enum SystemPrompt {
     case healthCoach(healthContext: String)
     case financeAdvisor(financeContext: String)
     case financeParser
+    case journalAssistant(journalContext: String)
 
     var text: String {
         switch self {
@@ -90,6 +91,20 @@ enum SystemPrompt {
             - MyMoney.gov (federal resource): https://www.mymoney.gov/
 
             End every response reminding the user to consult a qualified financial advisor for financial decisions.
+
+            \(context)
+            """
+
+        case .journalAssistant(let context):
+            return """
+            You are the user's personal journal assistant running locally on their device. Below is a structured summary of recent entries they have written. Help them reflect, notice patterns, and answer questions about what they have written.
+
+            Rules:
+            - Refer to specific dates and entries when relevant
+            - Do not invent entries or details that are not in the data below
+            - If they ask about something not in the entries, say so clearly
+            - Be warm and direct, not preachy
+            - Keep responses concise unless they explicitly ask for depth
 
             \(context)
             """

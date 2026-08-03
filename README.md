@@ -25,6 +25,7 @@ Private AI assistant that runs entirely on your device. No cloud, no accounts, n
 ## What it does
 
 - **Chat** with AI models downloaded to your device
+- **Experimental: a 35-billion-parameter model on your iPhone.** Qwen 3.6 35B streams its weights from storage instead of loading into memory, so it runs in about 2.5 GB of RAM. Find it in Settings under Experimental Models. This ships in the newest app version, which may still be in App Store review; if you do not see it yet, check back in a couple of days.
 - **Health insights** from Apple HealthKit data with AI coaching
 - **Finance tracking** from uploaded bank/credit card statements (PDF or image)
 - **Image analysis** via on-device OCR
@@ -34,7 +35,9 @@ Everything stays on your device. The app works offline after you download a mode
 
 ## How it works
 
-Models run through [llama.cpp](https://github.com/ggerganov/llama.cpp) using GGUF format. The app includes a catalog of models from Hugging Face (SmolLM2, Qwen2.5, Llama 3.2, Phi 3.5, Gemma, Mistral) ranging from 360M to 7B parameters.
+Regular models run through [llama.cpp](https://github.com/ggerganov/llama.cpp) using GGUF format. The app includes a catalog of models from Hugging Face (SmolLM2, Qwen2.5, Llama 3.2, Phi 3.5, Gemma, Mistral) ranging from 360M to 7B parameters.
+
+The experimental 35B runs on Swiftlet, a Swift + Metal engine that keeps a small dense core resident and streams the model's Mixture-of-Experts weights from storage per token. The model itself comes from [Hugging Face](https://huggingface.co/Leonickson/Qwen3.6-35B-A3B-qpack) as a resumable in-app download of about 18 GB.
 
 For health and finance features, the app uses Apple's on-device frameworks (HealthKit, Vision OCR, PDFKit) to gather data, then feeds it as context to the LLM for analysis.
 
@@ -50,8 +53,10 @@ For health and finance features, the app uses Apple's on-device frameworks (Heal
 ### Steps
 
 ```bash
-# 1. Clone the repo
+# 1. Clone the app and the Swiftlet engine side by side
+#    (the project references ../swiftlet as a local package)
 git clone https://github.com/leonickson1/localLLM.git
+git clone https://github.com/leonickson1/Swiftlet.git swiftlet
 cd localLLM
 
 # 2. Open in Xcode
@@ -59,13 +64,13 @@ open localLLM.xcodeproj
 ```
 
 3. Wait for SPM to resolve the [llama.swift](https://github.com/mattt/llama.swift) dependency (takes ~1 min first time)
-4. **Change the Bundle Identifier** in Signing & Capabilities — the existing `com.monishsoundarraj.PrivAI` is registered to the original developer's team and Apple will reject it. Use something unique like `com.yourname.PrivAI`
+4. **Change the Bundle Identifier** in Signing & Capabilities. The existing `com.monishsoundarraj.PrivAI` is registered to the original developer's team and Apple will reject it. Use something unique like `com.yourname.PrivAI`
 5. **Set your Development Team** in Signing & Capabilities (Xcode will prompt you on first build)
 6. Select your iOS device as the run destination (simulator works for UI, but HealthKit and llama.cpp inference need a real device)
 7. Hit **Cmd+R** to build and run
 8. On first launch, accept the terms screen and download a model from the built-in catalog
 
-> **Apple Developer account note:** A free account is fine for running it on your own device. HealthKit capability works on free accounts for personal builds — you don't need the paid $99/yr program unless you want to distribute via TestFlight or the App Store.
+> **Apple Developer account note:** A free account is fine for running it on your own device. HealthKit capability works on free accounts for personal builds, you don't need the paid $99/yr program unless you want to distribute via TestFlight or the App Store.
 
 ### Troubleshooting
 
@@ -93,6 +98,7 @@ Then connect from Settings in the app using your Mac's local IP (e.g. `192.168.1
 | Layer | Tech |
 |-------|------|
 | Inference | llama.cpp via [llama.swift](https://github.com/mattt/llama.swift) |
+| Streamed 35B (experimental) | Swiftlet, Swift + Metal Mixture-of-Experts streaming |
 | Health | HealthKit |
 | Finance | PDFKit + Vision OCR + LLM categorization |
 | Remote models | Ollama REST API |
@@ -135,10 +141,10 @@ Initial inspiration came from [Google AI Edge Gallery](https://github.com/google
 
 Built on top of:
 
-- [llama.cpp](https://github.com/ggerganov/llama.cpp) — inference engine
-- [llama.swift](https://github.com/mattt/llama.swift) — Swift bindings
-- Hugging Face — GGUF model hosting (SmolLM2, Qwen2.5, Llama 3.2, Phi 3.5, Gemma, Mistral)
-- Apple frameworks — HealthKit, Vision, PDFKit, SwiftUI
+- [llama.cpp](https://github.com/ggerganov/llama.cpp): inference engine
+- [llama.swift](https://github.com/mattt/llama.swift): Swift bindings
+- Hugging Face: GGUF model hosting (SmolLM2, Qwen2.5, Llama 3.2, Phi 3.5, Gemma, Mistral)
+- Apple frameworks: HealthKit, Vision, PDFKit, SwiftUI
 
 ## License
 

@@ -118,6 +118,8 @@ struct HealthDashboardView: View {
     @EnvironmentObject var inferenceManager: InferenceManager
     @EnvironmentObject var parameterStore: ParameterStore
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
+    @Environment(\.scenePhase) var scenePhase
     @State private var navigateToChat = false
     @State private var animateGauges = false
     @State private var aiInsightText: String = ""
@@ -125,6 +127,7 @@ struct HealthDashboardView: View {
     @State private var isRefreshing = false
     @State private var showDisconnectAlert = false
     @State private var showInsightCitations = false
+    @State private var lastFetchDay: Date = Calendar.current.startOfDay(for: Date())
 
     // Quick rule-based insight (always available, instant)
     private var quickInsight: String {
@@ -167,7 +170,15 @@ struct HealthDashboardView: View {
 
         isGeneratingInsight = true
 
-        if ollamaService.isEnabled && ollamaService.isConnected {
+        // Priority: OpenAI-compatible -> Ollama -> on-device
+        if openAICompat.isEnabled && openAICompat.isConnected && !openAICompat.selectedModel.isEmpty {
+            if let response = await openAICompat.chat(
+                systemPrompt: "You are a concise health coach. Give brief, actionable insights in 2-3 sentences.",
+                userMessage: prompt
+            ) {
+                aiInsightText = response.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        } else if ollamaService.isEnabled && ollamaService.isConnected {
             if let response = await ollamaService.chat(
                 systemPrompt: "You are a concise health coach. Give brief, actionable insights in 2-3 sentences.",
                 userMessage: prompt
@@ -405,28 +416,42 @@ struct HealthDashboardView: View {
             }
             .background(Color(uiColor: .systemBackground))
 
-            // Floating AI Button
-            Button { navigateToChat = true } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(colors: [.pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                    Text("Ask Health Coach")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+            // Floating AI Button. Chat-only models (the experimental 35B)
+            // can't back the coach, so the button disables with guidance
+            // when no capable model is installed.
+            VStack(spacing: 8) {
+                Button { navigateToChat = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(
+                                LinearGradient(colors: [.pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                        Text("Ask Health Coach")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 24).padding(.vertical, 14)
+                    .background(
+                        Capsule().fill(Color(uiColor: .darkGray))
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
                 }
-                .padding(.horizontal, 24).padding(.vertical, 14)
-                .background(
-                    Capsule().fill(Color(uiColor: .darkGray))
-                )
-                .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+                .disabled(modelManager.onlyChatOnlyModelsInstalled)
+                .opacity(modelManager.onlyChatOnlyModelsInstalled ? 0.55 : 1)
+
+                if modelManager.onlyChatOnlyModelsInstalled {
+                    Text("Download another model to use this. The 35B experimental model is chat-only for now.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
             }
             .padding(.bottom, 30)
         }
         .navigationDestination(isPresented: $navigateToChat) {
-            ChatView(model: modelManager.downloadedModels.first ?? AIModel.sampleModels[0], initialContext: .health)
+            ChatView(model: modelManager.firstAssistCapableModel ?? AIModel.sampleModels[0], initialContext: .health)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -469,8 +494,26 @@ struct HealthDashboardView: View {
         }
         .task {
             await healthManager.fetchAllData()
+            lastFetchDay = Calendar.current.startOfDay(for: Date())
             withAnimation(.easeOut(duration: 1.2).delay(0.3)) { animateGauges = true }
             await generateAIInsight()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Auto-refresh when the app returns to the foreground so multi-day-old data updates.
+            guard newPhase == .active else { return }
+            Task {
+                let today = Calendar.current.startOfDay(for: Date())
+                if today != lastFetchDay {
+                    // Day rolled over — refresh AI insight too since "today's data" changed.
+                    await healthManager.fetchAllData()
+                    lastFetchDay = today
+                    aiInsightText = ""
+                    await generateAIInsight()
+                } else {
+                    // Same day — refresh metrics but keep the existing insight.
+                    await healthManager.fetchAllData()
+                }
+            }
         }
     }
 }
@@ -617,6 +660,8 @@ struct MetricBentoCard: View {
                     if let unit { Text(unit).font(.system(size: 16)).foregroundStyle(.secondary) }
                 }
             }
+            // Always reserve space for the change pill so cards have a uniform height
+            // even when value or change is zero. Show invisible placeholder when no pill.
             if let change, change != 0 {
                 let isGood = isPositiveGood ? change > 0 : change < 0
                 HStack(spacing: 4) {
@@ -628,6 +673,14 @@ struct MetricBentoCard: View {
                 .background(isGood ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
                 .foregroundStyle(isGood ? .green : .red)
                 .clipShape(Capsule())
+            } else {
+                // Invisible placeholder with the same dimensions as the pill so the card height stays constant.
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .bold))
+                    Text("0").font(.system(size: 12, weight: .semibold))
+                }
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .opacity(0)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

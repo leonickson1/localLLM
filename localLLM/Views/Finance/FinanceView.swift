@@ -35,6 +35,7 @@ struct FinanceUploadView: View {
     @EnvironmentObject var inferenceManager: InferenceManager
     @EnvironmentObject var parameterStore: ParameterStore
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
     @State private var showFileImporter = false
     @State private var showAccountPrompt = false
     @State private var pendingURLs: [URL] = []
@@ -135,7 +136,8 @@ struct FinanceUploadView: View {
                     await financeManager.categorizeWithLLM(
                         using: inferenceManager,
                         parameters: parameterStore.asModelParameters,
-                        ollamaService: ollamaService
+                        ollamaService: ollamaService,
+                        openAICompat: openAICompat
                     )
                 }
             }
@@ -243,6 +245,7 @@ struct FinanceDashboardView: View {
     @EnvironmentObject var parameterStore: ParameterStore
     @EnvironmentObject var modelManager: ModelManager
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
     @State private var navigateToChat = false
     @State private var showFileImporter = false
     @State private var showClearAlert = false
@@ -476,9 +479,10 @@ struct FinanceDashboardView: View {
                                     }
                                 }
 
-                                if !modelManager.downloadedModels.isEmpty {
+                                if modelManager.firstAssistCapableModel != nil {
                                     Menu {
-                                        ForEach(modelManager.downloadedModels) { m in
+                                        // Chat-only models (experimental 35B) can't do extraction.
+                                        ForEach(modelManager.downloadedModels.filter { $0.engineFormat != .swiftlet }) { m in
                                             Button(m.displayName) {
                                                 Task { await inferenceManager.loadModel(m) }
                                             }
@@ -645,27 +649,41 @@ struct FinanceDashboardView: View {
             }
             .background(Color(uiColor: .systemBackground))
 
-            // Floating AI Button (matches Health)
-            Button { navigateToChat = true } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                    Text("Ask Finance AI")
-                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+            // Floating AI Button (matches Health). Chat-only models (the
+            // experimental 35B) can't back this, so it disables with
+            // guidance when no capable model is installed.
+            VStack(spacing: 8) {
+                Button { navigateToChat = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(
+                                LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                        Text("Ask Finance AI")
+                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 24).padding(.vertical, 14)
+                    .background(
+                        Capsule().fill(Color(uiColor: .darkGray))
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
                 }
-                .padding(.horizontal, 24).padding(.vertical, 14)
-                .background(
-                    Capsule().fill(Color(uiColor: .darkGray))
-                )
-                .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+                .disabled(modelManager.onlyChatOnlyModelsInstalled)
+                .opacity(modelManager.onlyChatOnlyModelsInstalled ? 0.55 : 1)
+
+                if modelManager.onlyChatOnlyModelsInstalled {
+                    Text("Download another model to use this. The 35B experimental model is chat-only for now.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
             }
             .padding(.bottom, 30)
         }
         .navigationDestination(isPresented: $navigateToChat) {
-            ChatView(model: modelManager.downloadedModels.first ?? AIModel.sampleModels[0], initialContext: .finance)
+            ChatView(model: modelManager.firstAssistCapableModel ?? AIModel.sampleModels[0], initialContext: .finance)
         }
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [UTType.pdf, UTType.image], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result, !urls.isEmpty {
@@ -682,7 +700,7 @@ struct FinanceDashboardView: View {
                         financeManager.setActiveStatement(accountLabel: label)
                         await financeManager.parseStatement(from: url)
                         if !financeManager.rawStatementText.isEmpty {
-                            await financeManager.categorizeWithLLM(using: inferenceManager, parameters: parameterStore.asModelParameters, ollamaService: ollamaService)
+                            await financeManager.categorizeWithLLM(using: inferenceManager, parameters: parameterStore.asModelParameters, ollamaService: ollamaService, openAICompat: openAICompat)
                         }
                     }
                     pendingURLs = []
@@ -793,6 +811,7 @@ struct TransactionEditorSheet: View {
 
 struct FinanceModelPicker: View {
     @EnvironmentObject var ollamaService: OllamaService
+    @EnvironmentObject var openAICompat: OpenAICompatibleService
     @EnvironmentObject var inferenceManager: InferenceManager
     @EnvironmentObject var modelManager: ModelManager
 

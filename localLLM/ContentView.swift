@@ -28,7 +28,8 @@ struct ContentView: View {
 struct MainTabView: View {
     @EnvironmentObject var modelManager: ModelManager
     @EnvironmentObject var inferenceManager: InferenceManager
-    @State private var selectedTab = 0
+    @State private var selectedTab =
+        Int(ProcessInfo.processInfo.environment["PREVIEW_TAB"] ?? "0") ?? 0
 
     private var defaultModel: AIModel {
         modelManager.defaultModel
@@ -53,12 +54,20 @@ struct MainTabView: View {
             .tag(1)
 
             NavigationStack {
+                JournalView()
+            }
+            .tabItem {
+                Label("Journal", systemImage: "book.fill")
+            }
+            .tag(2)
+
+            NavigationStack {
                 FinanceView(model: defaultModel)
             }
             .tabItem {
                 Label("Finance", systemImage: "creditcard.fill")
             }
-            .tag(2)
+            .tag(3)
 
             NavigationStack {
                 SettingsView()
@@ -66,7 +75,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
-            .tag(3)
+            .tag(4)
         }
         .tint(.blue)
         .alert(
@@ -136,4 +145,6 @@ struct MainTabView: View {
         .environmentObject(HealthManager())
         .environmentObject(FinanceManager())
         .environmentObject(HuggingFaceService())
+        .environmentObject(OpenAICompatibleService())
+        .environmentObject(JournalManager())
 }
